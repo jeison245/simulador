@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Físico: Sistema con Polea Izquierda y Cuerpos</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        input[type=range] {
+            accent-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-atom text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">Simulador Dinámico: Polea Izquierda y Bloque</h1>
+                    <p class="text-xs text-slate-400">Según diagrama: Polea en extremo izquierdo, bloque sobre mesa y objeto colgando en el borde derecho</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-info" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-question"></i> Teoría y Ayuda
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- Left 2 Columns: Canvas & Playback Controls -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+            
+            <!-- Simulation Canvas Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col relative backdrop-blur overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Visualización Gráfica (Basado en Diagrama)</h2>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-slate-400">
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-vectors" checked class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                            Mostrar Vectores de Fuerza
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Canvas container -->
+                <div class="relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80 shadow-inner flex items-center justify-center" style="height: 380px;">
+                    <canvas id="simCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Floating State Indicator -->
+                    <div id="status-badge" class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 border border-amber-500/30 text-amber-300 backdrop-blur-md">
+                        En Reposo (Fricción Estática)
+                    </div>
+                </div>
+
+                <!-- Simulation Control Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mt-4 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-play" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-sm transition shadow-lg shadow-emerald-600/20 flex items-center gap-2">
+                            <i class="fa-solid fa-play" id="play-icon"></i> <span id="play-text">Iniciar</span>
+                        </button>
+                        <button id="btn-pause" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold text-sm transition shadow-lg shadow-amber-600/20 flex items-center gap-2">
+                            <i class="fa-solid fa-pause"></i> Pausar
+                        </button>
+                        <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-semibold text-sm transition border border-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right"></i> Reiniciar
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-3 text-xs text-slate-300">
+                        <span>Gravedad (g): <strong class="text-blue-400">9.81 m/s²</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur">
+                <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-blue-400"></i> Panel de Cinemática y Fuerzas
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">Aceleración (a)</span>
+                        <span id="stat-accel" class="text-lg font-bold text-blue-400">0.00 m/s²</span>
+                    </div>
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">Velocidad (v)</span>
+                        <span id="stat-vel" class="text-lg font-bold text-emerald-400">0.00 m/s</span>
+                    </div>
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">Posición (x)</span>
+                        <span id="stat-pos" class="text-lg font-bold text-indigo-400">0.00 m</span>
+                    </div>
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">Tensión (T)</span>
+                        <span id="stat-tension" class="text-lg font-bold text-amber-400">0.00 N</span>
+                    </div>
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-slate-800 flex flex-wrap justify-between text-xs text-slate-400 gap-2">
+                    <span>Peso Mesa (P₁): <strong id="stat-p1" class="text-slate-200">9.81 N</strong></span>
+                    <span>Fricción Estática Máx (fs,max): <strong id="stat-fsmax" class="text-slate-200">2.94 N</strong></span>
+                    <span>Fricción Dinámica (fk): <strong id="stat-fk" class="text-slate-200">1.96 N</strong></span>
+                    <span>Peso Colgante (P₂): <strong id="stat-p2" class="text-slate-200">4.90 N</strong></span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur flex flex-col gap-5">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h2 class="font-bold text-base text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-blue-500"></i> Parámetros del Sistema
+                    </h2>
+                    <span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30 font-medium">Control</span>
+                </div>
+
+                <!-- Slider 1: Mass 1 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="range-m1" class="font-medium text-slate-300 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded bg-blue-500 inline-block"></span> Masa sobre mesa (m₁)
+                        </label>
+                        <span id="val-m1" class="font-bold text-blue-400 bg-blue-950 px-2 py-0.5 rounded border border-blue-900">1.0 kg</span>
+                    </div>
+                    <input id="range-m1" type="range" min="0.5" max="10.0" step="0.1" value="1.0" class="w-full bg-slate-950 h-2 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>0.5 kg</span>
+                        <span>10.0 kg</span>
+                    </div>
+                </div>
+
+                <!-- Slider 2: Mass 2 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="range-m2" class="font-medium text-slate-300 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded bg-amber-500 inline-block"></span> Masa colgante (m₂)
+                        </label>
+                        <span id="val-m2" class="font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded border border-amber-900">0.5 kg</span>
+                    </div>
+                    <input id="range-m2" type="range" min="0.1" max="10.0" step="0.1" value="0.5" class="w-full bg-slate-950 h-2 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>0.1 kg</span>
+                        <span>10.0 kg</span>
+                    </div>
+                </div>
+
+                <!-- Slider 3: Static Friction -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="range-mus" class="font-medium text-slate-300 flex items-center gap-1.5">
+                            Rozamiento Estático (μs)
+                        </label>
+                        <span id="val-mus" class="font-bold text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-900">0.30</span>
+                    </div>
+                    <input id="range-mus" type="range" min="0.0" max="1.0" step="0.01" value="0.30" class="w-full bg-slate-950 h-2 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>0.0 (Sin fricción)</span>
+                        <span>1.0 (Muy rugoso)</span>
+                    </div>
+                </div>
+
+                <!-- Slider 4: Kinetic Friction -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label for="range-muk" class="font-medium text-slate-300 flex items-center gap-1.5">
+                            Rozamiento Dinámico (μk)
+                        </label>
+                        <span id="val-muk" class="font-bold text-purple-400 bg-purple-950 px-2 py-0.5 rounded border border-purple-900">0.20</span>
+                    </div>
+                    <input id="range-muk" type="range" min="0.0" max="1.0" step="0.01" value="0.20" class="w-full bg-slate-950 h-2 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500">
+                        <span>0.0</span>
+                        <span>1.0</span>
+                    </div>
+                </div>
+
+                <!-- Presets -->
+                <div class="pt-3 border-t border-slate-800">
+                    <span class="text-xs font-semibold text-slate-400 block mb-2">Casos de Demostración:</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="preset-static" class="px-3 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs rounded-lg border border-slate-800 transition font-medium text-center">
+                            Sistema en Reposo
+                        </button>
+                        <button id="preset-motion" class="px-3 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs rounded-lg border border-slate-800 transition font-medium text-center">
+                            Sistema en Movimiento
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theory card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur text-xs text-slate-400 space-y-2">
+                <h4 class="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <i class="fa-solid fa-book-open text-emerald-400"></i> Sobre este Diagrama
+                </h4>
+                <p>• La polea fija está anclada en el <strong>extremo izquierdo</strong> de la mesa.</p>
+                <p>• El cable va desde el bloque (m₁) hacia la izquierda hasta la polea, y desde allí cruza por encima de la polea bajando verticalmente hacia el cuerpo colgante (m₂) en el borde derecho.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Info -->
+    <div id="modal-info" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-blue-500"></i> Guía del Simulador
+                </h3>
+                <button id="close-modal" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            <div class="text-sm text-slate-300 space-y-3 leading-relaxed">
+                <p>Este simulador representa exactamente tu boceto técnico:</p>
+                <ul class="list-disc pl-5 space-y-1.5 text-slate-400">
+                    <li><strong>Mesa Horizontal:</strong> Superficie con rozamiento ajustable.</li>
+                    <li><strong>Polea Izquierda:</strong> Fijada en el soporte izquierdo vertical.</li>
+                    <li><strong>Bloque m₁:</strong> Situado sobre la mesa con su respectiva fuerza de fricción.</li>
+                    <li><strong>Cuerpo Colgante m₂:</strong> Suspendido en el borde derecho conectado al cable que recorre toda la mesa hasta la polea izquierda.</li>
+                </ul>
+            </div>
+            <div class="flex justify-end pt-3 border-t border-slate-800">
+                <button id="btn-close-modal" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium text-sm transition">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800/80 mt-auto">
+        Simulador Interactivo de Física • Basado en Diagrama Técnico (Polea Izquierda / Cuerpos a la Derecha)
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const g = 9.81; // m/s^2
+
+        let m1 = 1.0;  // kg
+        let m2 = 0.5;  // kg
+        let mu_s = 0.30; 
+        let mu_k = 0.20; 
+
+        let posX = 0.0;    // displacement towards left
+        let vel = 0.0;     
+        let accel = 0.0;   
+        let isRunning = false;
+        let isMoving = false;
+
+        const rangeM1 = document.getElementById('range-m1');
+        const rangeM2 = document.getElementById('range-m2');
+        const rangeMus = document.getElementById('range-mus');
+        const rangeMuk = document.getElementById('range-muk');
+
+        const valM1 = document.getElementById('val-m1');
+        const valM2 = document.getElementById('val-m2');
+        const valMus = document.getElementById('val-mus');
+        const valMuk = document.getElementById('val-muk');
+
+        const statAccel = document.getElementById('stat-accel');
+        const statVel = document.getElementById('stat-vel');
+        const statPos = document.getElementById('stat-pos');
+        const statTension = document.getElementById('stat-tension');
+        const statP1 = document.getElementById('stat-p1');
+        const statFsMax = document.getElementById('stat-fsmax');
+        const statFk = document.getElementById('stat-fk');
+        const statP2 = document.getElementById('stat-p2');
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnPause = document.getElementById('btn-pause');
+        const btnReset = document.getElementById('btn-reset');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const statusBadge = document.getElementById('status-badge');
+        const chkVectors = document.getElementById('chk-vectors');
+
+        const btnInfo = document.getElementById('btn-info');
+        const modalInfo = document.getElementById('modal-info');
+        const closeModal = document.getElementById('close-modal');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const presetStatic = document.getElementById('preset-static');
+        const presetMotion = document.getElementById('preset-motion');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function updateFromUI() {
+            m1 = parseFloat(rangeM1.value);
+            m2 = parseFloat(rangeM2.value);
+            mu_s = parseFloat(rangeMus.value);
+            mu_k = parseFloat(rangeMuk.value);
+
+            valM1.textContent = m1.toFixed(1) + ' kg';
+            valM2.textContent = m2.toFixed(1) + ' kg';
+            valMus.textContent = mu_s.toFixed(2);
+            valMuk.textContent = mu_k.toFixed(2);
+
+            calculatePhysicsState();
+        }
+
+        rangeM1.addEventListener('input', updateFromUI);
+        rangeM2.addEventListener('input', updateFromUI);
+        rangeMus.addEventListener('input', updateFromUI);
+        rangeMuk.addEventListener('input', updateFromUI);
+
+        presetStatic.addEventListener('click', () => {
+            rangeM1.value = 2.0;
+            rangeM2.value = 0.3;
+            rangeMus.value = 0.40;
+            rangeMuk.value = 0.30;
+            updateFromUI();
+            resetSimulation();
+        });
+
+        presetMotion.addEventListener('click', () => {
+            rangeM1.value = 1.0;
+            rangeM2.value = 1.5;
+            rangeMus.value = 0.20;
+            rangeMuk.value = 0.15;
+            updateFromUI();
+            resetSimulation();
+        });
+
+        btnInfo.addEventListener('click', () => modalInfo.classList.remove('hidden'));
+        closeModal.addEventListener('click', () => modalInfo.classList.add('hidden'));
+        btnCloseModal.addEventListener('click', () => modalInfo.classList.add('hidden'));
+
+        function calculatePhysicsState() {
+            const P1 = m1 * g;
+            const P2 = m2 * g;
+            const fsMax = mu_s * P1;
+            const fk = mu_k * P1;
+
+            statP1.textContent = P1.toFixed(2) + ' N';
+            statFsMax.textContent = fsMax.toFixed(2) + ' N';
+            statFk.textContent = fk.toFixed(2) + ' N';
+            statP2.textContent = P2.toFixed(2) + ' N';
+
+            if (!isMoving) {
+                if (P2 > fsMax) {
+                    isMoving = true;
+                    statusBadge.textContent = "En Movimiento (Hacia la Izquierda)";
+                    statusBadge.className = "absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 backdrop-blur-md";
+                } else {
+                    isMoving = false;
+                    accel = 0.0;
+                    statusBadge.textContent = "En Reposo (Fricción Estática)";
+                    statusBadge.className = "absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 border border-amber-500/30 text-amber-300 backdrop-blur-md";
+                }
+            }
+
+            if (isMoving) {
+                accel = (P2 - fk) / (m1 + m2);
+                if (accel < 0) accel = 0;
+            } else {
+                accel = 0.0;
+            }
+
+            let tension = 0;
+            if (isMoving) {
+                tension = m1 * accel + fk;
+            } else {
+                tension = P2;
+            }
+
+            statAccel.textContent = accel.toFixed(2) + ' m/s²';
+            statVel.textContent = vel.toFixed(2) + ' m/s';
+            statPos.textContent = posX.toFixed(2) + ' m';
+            statTension.textContent = tension.toFixed(2) + ' N';
+        }
+
+        btnPlay.addEventListener('click', () => {
+            isRunning = true;
+            playIcon.className = "fa-solid fa-rotate";
+            playText.textContent = "Ejecutando";
+        });
+
+        btnPause.addEventListener('click', () => {
+            isRunning = false;
+            playIcon.className = "fa-solid fa-play";
+            playText.textContent = "Iniciar";
+        });
+
+        btnReset.addEventListener('click', resetSimulation);
+
+        function resetSimulation() {
+            isRunning = false;
+            isMoving = false;
+            posX = 0.0;
+            vel = 0.0;
+            playIcon.className = "fa-solid fa-play";
+            playText.textContent = "Iniciar";
+            updateFromUI();
+        }
+
+        function drawVector(ctx, fromX, fromY, toX, toY, color, label) {
+            const headLen = 8;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.lineTo(toX, toY);
+            ctx.fill();
+
+            if (label) {
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillText(label, toX + 5, toY + 3);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const width = canvas.width;
+            const height = canvas.height;
+
+            const tableY = height * 0.58;
+            const tableStartX = 100;
+            const tableEndX = width - 80;
+            
+            const pulleyX = tableStartX;
+            const pulleyY = tableY - 10;
+            const pulleyRadius = 16;
+
+            // Left vertical support and Pulley
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(tableStartX - 16, tableY - 45, 12, 60);
+
+            // Table Surface
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(tableStartX - 20, tableY, (tableEndX - tableStartX) + 40, 16);
+
+            // Roughness pattern on table surface
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = tableStartX + 20; x < tableEndX - 20; x += 14) {
+                ctx.moveTo(x, tableY);
+                ctx.lineTo(x + 7, tableY - 5);
+                ctx.lineTo(x + 14, tableY);
+            }
+            ctx.stroke();
+
+            // Table legs
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(tableStartX + 40, tableY + 16, 12, height - tableY - 16);
+            ctx.fillRect(tableEndX - 40, tableY + 16, 12, height - tableY - 16);
+
+            // Pulley
+            ctx.beginPath();
+            ctx.arc(pulleyX, pulleyY, pulleyRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(pulleyX, pulleyY, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+
+            // Block 1
+            const pixelsPerMeter = 110;
+            const blockWidth = 75;
+            const blockHeight = 50;
+            
+            const startBlockX = tableEndX - blockWidth - 50; 
+            const minBlockX = pulleyX + pulleyRadius + 5;
+            
+            let block1X = startBlockX - (posX * pixelsPerMeter);
+            if (block1X < minBlockX) {
+                block1X = minBlockX; 
+            }
+            const block1Y = tableY - blockHeight;
+
+            // Block body
+            ctx.fillStyle = '#3b82f6';
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(block1X, block1Y, blockWidth, blockHeight, 6);
+                ctx.fill();
+            } else {
+                ctx.fillRect(block1X, block1Y, blockWidth, blockHeight);
+            }
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#93c5fd';
+            ctx.stroke();
+
+            // Label on block 1 placed neatly above the block to prevent overlap with vectors/cords
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`m₁ = ${m1.toFixed(1)} kg`, block1X + blockWidth / 1.90, block1Y + 18);
+
+            // Hanging Block 2
+            const hangingBlockW = 45;
+            const hangingBlockH = 55;
+            const hangingBlockX = tableEndX - hangingBlockW / 2;
+            let hangingBlockY = tableY + 16 + (posX * pixelsPerMeter);
+            
+            const maxHangingY = height - hangingBlockH - 15;
+            if (hangingBlockY > maxHangingY) {
+                hangingBlockY = maxHangingY;
+            }
+
+            // Block 2 body
+            ctx.fillStyle = '#f59e0b';
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(hangingBlockX, hangingBlockY, hangingBlockW, hangingBlockH, 6);
+                ctx.fill();
+            } else {
+                ctx.fillRect(hangingBlockX, hangingBlockY, hangingBlockW, hangingBlockH);
+            }
+            ctx.strokeStyle = '#fde68a';
+            ctx.stroke();
+
+            // Label on block 2
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.fillText(`m₂`, hangingBlockX + hangingBlockW / 2, hangingBlockY + hangingBlockH / 2 - 4);
+            ctx.font = '10px Inter, sans-serif';
+            ctx.fillText(`${m2.toFixed(1)}kg`, hangingBlockX + hangingBlockW / 2, hangingBlockY + hangingBlockH / 2 + 12);
+
+            // Connecting Ropes
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+
+            // Horizontal segment from block 1 left edge to left pulley
+            ctx.beginPath();
+            ctx.moveTo(block1X, block1Y + blockHeight / 2);
+            ctx.lineTo(pulleyX, pulleyY);
+            ctx.stroke();
+
+            // Overhead return cable running across table top from pulley to right edge
+            ctx.beginPath();
+            ctx.moveTo(pulleyX, pulleyY - pulleyRadius);
+            ctx.quadraticCurveTo(width / 2, pulleyY - 55, tableEndX, tableY);
+            ctx.stroke();
+
+            // Vertical segment hanging down from table right edge to block 2
+            ctx.beginPath();
+            ctx.moveTo(tableEndX, tableY);
+            ctx.lineTo(tableEndX, hangingBlockY);
+            ctx.stroke();
+
+            // Force Vectors
+            if (chkVectors.checked) {
+                const b1CenterX = block1X + blockWidth / 2;
+                const b1CenterY = block1Y + blockHeight / 2;
+
+                // Weight P1
+                drawVector(ctx, b1CenterX, b1CenterY, b1CenterX, b1CenterY + 45, '#ef4444', 'P₁');
+                // Normal N
+                drawVector(ctx, b1CenterX, b1CenterY, b1CenterX, b1CenterY - 45, '#10b981', 'N');
+                // Tension T
+                drawVector(ctx, b1CenterX, b1CenterY, b1CenterX - 50, b1CenterY, '#f59e0b', 'T');
+                
+                // Friction f
+                const frictionVal = isMoving ? (mu_k * m1 * g) : Math.min(m2 * g, mu_s * m1 * g);
+                if (frictionVal > 0.05) {
+                    drawVector(ctx, b1CenterX, b1CenterY + 15, b1CenterX + 45, b1CenterY + 15, '#8b5cf6', 'f');
+                }
+
+                // Hanging weight P2
+                const b2CenterX = hangingBlockX + hangingBlockW / 2;
+                const b2CenterY = hangingBlockY + hangingBlockH;
+                drawVector(ctx, b2CenterX, b2CenterY, b2CenterX, b2CenterY + 45, '#ef4444', 'P₂');
+            }
+        }
+
+        function animate(timestamp) {
+            if (isRunning) {
+                calculatePhysicsState();
+                if (isMoving) {
+                    const dt = 0.016;
+                    vel += accel * dt;
+                    posX += vel * dt;
+
+                    const maxPos = ((canvas.width - 80 - 50 - 75) - (100 + 16 + 5)) / 110;
+                    if (posX >= maxPos) {
+                        posX = maxPos;
+                        vel = 0;
+                        isRunning = false;
+                        playIcon.className = "fa-solid fa-play";
+                        playText.textContent = "Iniciar";
+                    }
+                }
+            }
+            render();
+            requestAnimationFrame(animate);
+        }
+
+        updateFromUI();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
